@@ -20,7 +20,7 @@ class DPW_PSI_Customizer {
             'priority' => 30,
         ) );
 
-        /* Hero */
+        /* ── Hero ── */
         $wp_customize->add_section( 'dpw_hero_section', array(
             'title' => __( 'Hero Slider', 'dpw-psi-papeng' ),
             'panel' => 'dpw_psi_panel',
@@ -47,7 +47,7 @@ class DPW_PSI_Customizer {
             'input_attrs' => array( 'min' => 1, 'max' => 20 ),
         ) );
 
-        /* Chairman */
+        /* ── Chairman ── */
         $wp_customize->add_section( 'dpw_chairman_section', array(
             'title' => __( 'Ketua DPW', 'dpw-psi-papeng' ),
             'panel' => 'dpw_psi_panel',
@@ -78,38 +78,38 @@ class DPW_PSI_Customizer {
             'sanitize_callback' => 'wp_kses_post',
         ) );
         $wp_customize->add_control( 'chairman_message', array(
-            'label'       => __( 'Pesan Sambutan', 'dpw-psi-papeng' ),
-            'section'     => 'dpw_chairman_section',
-            'type'        => 'textarea',
+            'label'         => __( 'Pesan Sambutan', 'dpw-psi-papeng' ),
+            'section'       => 'dpw_chairman_section',
+            'type'          => 'textarea',
             'textarea_rows' => 6,
         ) );
 
-        /* Statistics */
+        /* ── Statistics ── */
         $wp_customize->add_section( 'dpw_stats_section', array(
             'title' => __( 'Statistik', 'dpw-psi-papeng' ),
             'panel' => 'dpw_psi_panel',
         ) );
 
         $stat_items = array(
-            'stat_members'    => __( 'Total Anggota', 'dpw-psi-papeng' ),
-            'stat_dpd'        => __( 'Total DPD', 'dpw-psi-papeng' ),
-            'stat_activities' => __( 'Total Kegiatan', 'dpw-psi-papeng' ),
-            'stat_cadres'     => __( 'Total Kader', 'dpw-psi-papeng' ),
+            'stat_members'    => array( 'label' => 'Total Anggota', 'default' => '2500' ),
+            'stat_dpd'        => array( 'label' => 'Total DPD', 'default' => '8' ),
+            'stat_activities' => array( 'label' => 'Total Kegiatan', 'default' => '150' ),
+            'stat_cadres'     => array( 'label' => 'Total Kader', 'default' => '800' ),
         );
 
-        foreach ( $stat_items as $key => $label ) {
+        foreach ( $stat_items as $key => $item ) {
             $wp_customize->add_setting( $key, array(
-                'default'           => '0',
+                'default'           => $item['default'],
                 'sanitize_callback' => 'sanitize_text_field',
             ) );
             $wp_customize->add_control( $key, array(
-                'label'   => $label,
+                'label'   => $item['label'],
                 'section' => 'dpw_stats_section',
                 'type'    => 'text',
             ) );
         }
 
-        /* Contact & Social */
+        /* ── Contact & Social ── */
         $wp_customize->add_section( 'dpw_contact_section', array(
             'title' => __( 'Kontak & Sosial Media', 'dpw-psi-papeng' ),
             'panel' => 'dpw_psi_panel',
@@ -121,17 +121,20 @@ class DPW_PSI_Customizer {
             'email'     => array( 'label' => 'Email', 'default' => 'info@psipapeng.id', 'type' => 'text' ),
             'phone'     => array( 'label' => 'Telepon', 'default' => '', 'type' => 'text' ),
             'address'   => array( 'label' => 'Alamat', 'default' => 'Papua Pegunungan, Indonesia', 'type' => 'textarea' ),
-            'facebook'  => array( 'label' => 'Facebook URL', 'default' => '#', 'type' => 'url' ),
-            'instagram' => array( 'label' => 'Instagram URL', 'default' => '#', 'type' => 'url' ),
-            'twitter'   => array( 'label' => 'Twitter/X URL', 'default' => '#', 'type' => 'url' ),
-            'youtube'   => array( 'label' => 'YouTube URL', 'default' => '#', 'type' => 'url' ),
-            'tiktok'    => array( 'label' => 'TikTok URL', 'default' => '#', 'type' => 'url' ),
+            'facebook'  => array( 'label' => 'Facebook URL', 'default' => '', 'type' => 'url' ),
+            'instagram' => array( 'label' => 'Instagram URL', 'default' => '', 'type' => 'url' ),
+            'twitter'   => array( 'label' => 'Twitter/X URL', 'default' => '', 'type' => 'url' ),
+            'youtube'   => array( 'label' => 'YouTube URL', 'default' => '', 'type' => 'url' ),
+            'tiktok'    => array( 'label' => 'TikTok URL', 'default' => '', 'type' => 'url' ),
         );
 
         foreach ( $contact_fields as $key => $field ) {
-            $sanitize = ( 'url' === $field['type'] ) ? 'esc_url_raw' : 'sanitize_text_field';
             if ( 'textarea' === $field['type'] ) {
                 $sanitize = 'wp_kses_post';
+            } elseif ( 'url' === $field['type'] ) {
+                $sanitize = 'esc_url_raw';
+            } else {
+                $sanitize = 'sanitize_text_field';
             }
             $wp_customize->add_setting( $key, array(
                 'default'           => $field['default'],
@@ -148,7 +151,7 @@ class DPW_PSI_Customizer {
             $wp_customize->add_control( $key, $ctrl );
         }
 
-        /* Registration Links */
+        /* ── Registration Links ── */
         $wp_customize->add_section( 'dpw_reg_section', array(
             'title' => __( 'Link Pendaftaran', 'dpw-psi-papeng' ),
             'panel' => 'dpw_psi_panel',
@@ -174,7 +177,7 @@ class DPW_PSI_Customizer {
             'type'    => 'url',
         ) );
 
-        /* Footer */
+        /* ── Footer ── */
         $wp_customize->add_section( 'dpw_footer_section', array(
             'title' => __( 'Footer', 'dpw-psi-papeng' ),
             'panel' => 'dpw_psi_panel',
@@ -199,6 +202,23 @@ class DPW_PSI_Customizer {
             'label'   => __( 'Teks Copyright (kosongkan = otomatis)', 'dpw-psi-papeng' ),
             'section' => 'dpw_footer_section',
             'type'    => 'text',
+        ) );
+
+        /* ── Google Search Console ── */
+        $wp_customize->add_section( 'dpw_gsc_section', array(
+            'title' => __( 'Google Search Console', 'dpw-psi-papeng' ),
+            'panel' => 'dpw_psi_panel',
+        ) );
+
+        $wp_customize->add_setting( 'gsc_verification', array(
+            'default'           => '',
+            'sanitize_callback' => 'sanitize_text_field',
+        ) );
+        $wp_customize->add_control( 'gsc_verification', array(
+            'label'       => __( 'Google Site Verification Code', 'dpw-psi-papeng' ),
+            'description' => __( 'Masukkan kode verifikasi dari Google Search Console (isi dalam content="...")', 'dpw-psi-papeng' ),
+            'section'     => 'dpw_gsc_section',
+            'type'        => 'text',
         ) );
     }
 }
