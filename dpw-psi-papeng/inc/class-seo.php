@@ -17,7 +17,6 @@ class DPW_PSI_SEO {
         add_action( 'wp_head', array( $this, 'output_preconnect' ), 1 );
         add_action( 'wp_head', array( $this, 'output_head_meta' ), 5 );
         add_action( 'wp_head', array( $this, 'output_schema' ), 99 );
-        add_action( 'customize_register', array( $this, 'customizer_fields' ) );
     }
 
     /* ── Sitemap Rewrite ── */
@@ -42,12 +41,8 @@ class DPW_PSI_SEO {
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 
-        /* Homepage */
-        $home_url  = home_url( '/' );
-        $home_time = $this->get_latest_post_date();
-        $this->output_url( $home_url, $home_time, 'daily', '1.0' );
+        $this->output_url( home_url( '/' ), $this->get_latest_post_date(), 'daily', '1.0' );
 
-        /* Static pages */
         $pages = get_posts( array(
             'post_type'      => 'page',
             'posts_per_page' => 50,
@@ -55,33 +50,19 @@ class DPW_PSI_SEO {
         ) );
         if ( is_array( $pages ) ) {
             foreach ( $pages as $p ) {
-                $this->output_url(
-                    get_permalink( $p ),
-                    get_post_modified_time( 'Y-m-d', false, $p ),
-                    'monthly',
-                    '0.7'
-                );
+                $this->output_url( get_permalink( $p ), get_post_modified_time( 'Y-m-d', false, $p ), 'monthly', '0.7' );
             }
         }
 
-        /* CPT URLs */
-        $post_types = array( 'psi_news', 'psi_video', 'psi_gallery', 'psi_structure', 'psi_dpd' );
-        $priorities = array(
-            'psi_news'      => '0.8',
-            'psi_video'     => '0.7',
-            'psi_gallery'   => '0.6',
-            'psi_structure' => '0.6',
-            'psi_dpd'       => '0.6',
-        );
-        $freqs = array(
-            'psi_news' => 'daily',
-            'psi_video' => 'weekly',
-            'psi_gallery' => 'weekly',
-            'psi_structure' => 'monthly',
-            'psi_dpd' => 'monthly',
+        $post_types = array(
+            'psi_news'      => array( 'priority' => '0.8', 'freq' => 'daily' ),
+            'psi_video'     => array( 'priority' => '0.7', 'freq' => 'weekly' ),
+            'psi_gallery'   => array( 'priority' => '0.6', 'freq' => 'weekly' ),
+            'psi_structure' => array( 'priority' => '0.6', 'freq' => 'monthly' ),
+            'psi_dpd'       => array( 'priority' => '0.6', 'freq' => 'monthly' ),
         );
 
-        foreach ( $post_types as $pt ) {
+        foreach ( $post_types as $pt => $settings ) {
             $posts = get_posts( array(
                 'post_type'      => $pt,
                 'posts_per_page' => 200,
@@ -89,32 +70,17 @@ class DPW_PSI_SEO {
             ) );
             if ( is_array( $posts ) ) {
                 foreach ( $posts as $p ) {
-                    $this->output_url(
-                        get_permalink( $p ),
-                        get_post_modified_time( 'Y-m-d', false, $p ),
-                        $freqs[ $pt ],
-                        $priorities[ $pt ]
-                    );
+                    $this->output_url( get_permalink( $p ), get_post_modified_time( 'Y-m-d', false, $p ), $settings['freq'], $settings['priority'] );
                 }
             }
         }
 
-        /* Term archives */
         $taxonomies = array( 'news_category', 'video_category', 'gallery_category', 'structure_position' );
         foreach ( $taxonomies as $tax ) {
-            $terms = get_terms( array(
-                'taxonomy'   => $tax,
-                'hide_empty' => true,
-                'number'     => 100,
-            ) );
+            $terms = get_terms( array( 'taxonomy' => $tax, 'hide_empty' => true, 'number' => 100 ) );
             if ( is_array( $terms ) && ! is_wp_error( $terms ) ) {
                 foreach ( $terms as $t ) {
-                    $this->output_url(
-                        get_term_link( $t ),
-                        '2025-01-01',
-                        'weekly',
-                        '0.5'
-                    );
+                    $this->output_url( get_term_link( $t ), '2025-01-01', 'weekly', '0.5' );
                 }
             }
         }
@@ -148,7 +114,7 @@ class DPW_PSI_SEO {
         return gmdate( 'Y-m-d' );
     }
 
-    /* ── Robots.txt Sitemap Line ── */
+    /* ── Robots.txt ── */
     public function robots_txt_sitemap( $output, $public ) {
         if ( '0' === $public ) {
             return $output;
@@ -170,37 +136,30 @@ class DPW_PSI_SEO {
         }
     }
 
-    /* ── Head Meta Tags ── */
+    /* ── Head Meta ── */
     public function output_head_meta() {
 
-        /* GSC Verification */
         $gsc_code = get_theme_mod( 'gsc_verification', '' );
         if ( $gsc_code ) {
             echo '<meta name="google-site-verification" content="' . esc_attr( $gsc_code ) . '">' . "\n";
         }
 
-        /* Canonical */
         $canonical = $this->get_canonical();
         if ( $canonical ) {
             echo '<link rel="canonical" href="' . esc_url( $canonical ) . '">' . "\n";
         }
 
-        /* Robots */
         $robots = $this->get_robots_meta();
         if ( $robots ) {
             echo '<meta name="robots" content="' . esc_attr( $robots ) . '">' . "\n";
         }
 
-        /* Description */
         $desc = $this->get_meta_description();
         if ( $desc ) {
             echo '<meta name="description" content="' . esc_attr( $desc ) . '">' . "\n";
         }
 
-        /* Open Graph */
         $this->output_og_tags();
-
-        /* Twitter Card */
         $this->output_twitter_tags();
     }
 
@@ -212,13 +171,22 @@ class DPW_PSI_SEO {
             return home_url( '/' );
         }
         if ( is_category() || is_tax() ) {
-            return get_term_link( get_queried_object() );
+            $term = get_queried_object();
+            if ( $term && ! is_wp_error( $term ) ) {
+                return get_term_link( $term );
+            }
         }
         if ( is_post_type_archive() ) {
-            return get_post_type_archive_link( get_queried_object()->name );
+            $obj = get_queried_object();
+            if ( $obj && isset( $obj->name ) ) {
+                return get_post_type_archive_link( $obj->name );
+            }
         }
-        $current_url = home_url( add_query_arg( array(), $GLOBALS['wp']->request ) );
-        return $current_url;
+        $request = isset( $GLOBALS['wp'] ) ? $GLOBALS['wp']->request : '';
+        if ( $request ) {
+            return home_url( '/' . $request . '/' );
+        }
+        return home_url( '/' );
     }
 
     private function get_robots_meta() {
@@ -238,24 +206,22 @@ class DPW_PSI_SEO {
             $post = get_queried_object();
             if ( $post && ! empty( $post->post_excerpt ) ) {
                 $desc = $post->post_excerpt;
-            } elseif ( $post ) {
+            } elseif ( $post && ! empty( $post->post_content ) ) {
                 $desc = wp_trim_words( strip_tags( $post->post_content ), 30, '' );
             }
         } elseif ( is_front_page() || is_home() ) {
             $desc = get_bloginfo( 'description' );
             if ( ! $desc ) {
-                $desc = dpw_psi_get( 'footer_desc', 'Dewan Pimpinan Wilayah Partai Solidaritas Indonesia Provinsi Papua Pegunungan.' );
+                $desc = dpw_psi_get( 'footer_desc', '' );
             }
         } elseif ( is_category() || is_tax() ) {
             $term = get_queried_object();
-            if ( $term && ! empty( $term->description ) ) {
-                $desc = $term->description;
-            } else {
-                $desc = $term->name . ' - DPW PSI Papua Pegunungan';
+            if ( $term ) {
+                $desc = ! empty( $term->description ) ? $term->description : $term->name . ' - DPW PSI Papua Pegunungan';
             }
         } elseif ( is_post_type_archive() ) {
             $obj = get_queried_object();
-            if ( $obj ) {
+            if ( $obj && isset( $obj->name ) ) {
                 $labels = array(
                     'psi_news'      => 'Berita terkini dari DPW PSI Papua Pegunungan',
                     'psi_video'     => 'Video kegiatan DPW PSI Papua Pegunungan',
@@ -285,7 +251,7 @@ class DPW_PSI_SEO {
         $desc  = $this->get_meta_description();
         $url   = $this->get_canonical();
         $image = $this->get_og_image();
-        $type  = $this->get_og_type();
+        $type  = is_singular( 'psi_news' ) ? 'article' : 'website';
 
         echo '<meta property="og:title" content="' . esc_attr( $title ) . '">' . "\n";
         if ( $desc ) {
@@ -297,33 +263,32 @@ class DPW_PSI_SEO {
         echo '<meta property="og:site_name" content="' . esc_attr( get_bloginfo( 'name' ) ) . '">' . "\n";
         echo '<meta property="og:locale" content="id_ID">' . "\n";
         echo '<meta property="og:type" content="' . esc_attr( $type ) . '">' . "\n";
-        if ( $image ) {
+        if ( $image['url'] ) {
             echo '<meta property="og:image" content="' . esc_url( $image['url'] ) . '">' . "\n";
-            if ( ! empty( $image['width'] ) ) {
+            if ( $image['width'] ) {
                 echo '<meta property="og:image:width" content="' . esc_attr( $image['width'] ) . '">' . "\n";
             }
-            if ( ! empty( $image['height'] ) ) {
+            if ( $image['height'] ) {
                 echo '<meta property="og:image:height" content="' . esc_attr( $image['height'] ) . '">' . "\n";
             }
-            echo '<meta property="og:image:alt" content="' . esc_attr( $image['alt'] ) . '">' . "\n";
+            if ( $image['alt'] ) {
+                echo '<meta property="og:image:alt" content="' . esc_attr( $image['alt'] ) . '">' . "\n";
+            }
         }
 
-        /* Article specific */
         if ( is_singular( 'psi_news' ) ) {
             $post = get_queried_object();
             if ( $post ) {
-                $pub = get_the_date( 'c', $post );
+                echo '<meta property="article:published_time" content="' . esc_attr( get_the_date( 'c', $post ) ) . '">' . "\n";
                 $mod = get_post_modified_time( 'c', false, $post );
-                echo '<meta property="article:published_time" content="' . esc_attr( $pub ) . '">' . "\n";
+                $pub = get_the_date( 'c', $post );
                 if ( $pub !== $mod ) {
                     echo '<meta property="article:modified_time" content="' . esc_attr( $mod ) . '">' . "\n";
                 }
                 echo '<meta property="article:author" content="' . esc_attr( get_the_author_meta( 'display_name', $post->post_author ) ) . '">' . "\n";
                 $cats = get_the_terms( $post, 'news_category' );
                 if ( is_array( $cats ) && ! empty( $cats ) ) {
-                    foreach ( $cats as $c ) {
-                        echo '<meta property="article:section" content="' . esc_attr( $c->name ) . '">' . "\n";
-                    }
+                    echo '<meta property="article:section" content="' . esc_attr( $cats[0]->name ) . '">' . "\n";
                 }
                 $tags = get_the_terms( $post, 'news_tag' );
                 if ( is_array( $tags ) && ! empty( $tags ) ) {
@@ -340,23 +305,31 @@ class DPW_PSI_SEO {
             return get_the_title() . ' — ' . get_bloginfo( 'name' );
         }
         if ( is_front_page() || is_home() ) {
-            return get_bloginfo( 'name' ) . ' — ' . get_bloginfo( 'description' );
+            $desc = get_bloginfo( 'description' );
+            if ( $desc ) {
+                return get_bloginfo( 'name' ) . ' — ' . $desc;
+            }
+            return get_bloginfo( 'name' );
         }
         if ( is_category() || is_tax() ) {
             $term = get_queried_object();
-            return $term->name . ' — ' . get_bloginfo( 'name' );
+            if ( $term ) {
+                return $term->name . ' — ' . get_bloginfo( 'name' );
+            }
         }
         if ( is_post_type_archive() ) {
             $obj = get_queried_object();
-            $labels = array(
-                'psi_news' => 'Berita',
-                'psi_video' => 'Video',
-                'psi_gallery' => 'Galeri',
-                'psi_structure' => 'Struktur Organisasi',
-                'psi_dpd' => 'DPD Wilayah',
-            );
-            $name = isset( $labels[ $obj->name ] ) ? $labels[ $obj->name ] : $obj->labels->name;
-            return $name . ' — ' . get_bloginfo( 'name' );
+            if ( $obj && isset( $obj->name ) ) {
+                $labels = array(
+                    'psi_news' => 'Berita',
+                    'psi_video' => 'Video',
+                    'psi_gallery' => 'Galeri',
+                    'psi_structure' => 'Struktur Organisasi',
+                    'psi_dpd' => 'DPD Wilayah',
+                );
+                $name = isset( $labels[ $obj->name ] ) ? $labels[ $obj->name ] : $obj->labels->name;
+                return $name . ' — ' . get_bloginfo( 'name' );
+            }
         }
         if ( is_404() ) {
             return 'Halaman Tidak Ditemukan — ' . get_bloginfo( 'name' );
@@ -364,19 +337,8 @@ class DPW_PSI_SEO {
         return get_bloginfo( 'name' );
     }
 
-    private function get_og_type() {
-        if ( is_singular( 'psi_news' ) ) {
-            return 'article';
-        }
-        if ( is_singular() ) {
-            return 'website';
-        }
-        return 'website';
-    }
-
     private function get_og_image() {
         $image = array( 'url' => '', 'width' => '', 'height' => '', 'alt' => '' );
-
         if ( is_singular() ) {
             $thumb_id = get_post_thumbnail_id();
             if ( $thumb_id ) {
@@ -389,19 +351,16 @@ class DPW_PSI_SEO {
                 }
             }
         }
-
         return $image;
     }
 
     private function output_twitter_tags() {
         echo '<meta name="twitter:card" content="summary_large_image">' . "\n";
         echo '<meta name="twitter:title" content="' . esc_attr( $this->get_og_title() ) . '">' . "\n";
-
         $desc = $this->get_meta_description();
         if ( $desc ) {
             echo '<meta name="twitter:description" content="' . esc_attr( $desc ) . '">' . "\n";
         }
-
         $image = $this->get_og_image();
         if ( $image['url'] ) {
             echo '<meta name="twitter:image" content="' . esc_url( $image['url'] ) . '">' . "\n";
@@ -410,26 +369,20 @@ class DPW_PSI_SEO {
 
     /* ── Schema Markup ── */
     public function output_schema() {
-
-        /* Organization — all pages */
         $this->output_organization_schema();
 
-        /* WebSite — homepage only */
         if ( is_front_page() || is_home() ) {
             $this->output_website_schema();
         }
 
-        /* Breadcrumb — all except homepage */
-        if ( ! is_front_page() && ! is_home() ) {
+        if ( ! is_front_page() && ! is_home() && ! is_404() ) {
             $this->output_breadcrumb_schema();
         }
 
-        /* Article — single news */
         if ( is_singular( 'psi_news' ) ) {
             $this->output_article_schema();
         }
 
-        /* VideoObject — single video */
         if ( is_singular( 'psi_video' ) ) {
             $this->output_video_schema();
         }
@@ -454,9 +407,9 @@ class DPW_PSI_SEO {
             'logo'     => $this->get_site_logo_url(),
             'description' => get_bloginfo( 'description' ),
             'address'  => array(
-                '@type'           => 'PostalAddress',
-                'addressRegion'   => 'Papua Pegunungan',
-                'addressCountry'  => 'ID',
+                '@type'          => 'PostalAddress',
+                'addressRegion'  => 'Papua Pegunungan',
+                'addressCountry' => 'ID',
             ),
             'sameAs'   => $this->get_social_urls(),
         );
@@ -471,8 +424,8 @@ class DPW_PSI_SEO {
             'url'      => home_url( '/' ),
             'inLanguage' => 'id-ID',
             'potentialAction' => array(
-                '@type'  => 'SearchAction',
-                'target' => home_url( '/?s={search_term_string}' ),
+                '@type'       => 'SearchAction',
+                'target'      => home_url( '/?s={search_term_string}' ),
                 'query-input' => 'required name=search_term_string',
             ),
         );
@@ -481,10 +434,7 @@ class DPW_PSI_SEO {
 
     private function output_breadcrumb_schema() {
         $items = array(
-            array(
-                'name' => 'Beranda',
-                'url'  => home_url( '/' ),
-            ),
+            array( 'name' => 'Beranda', 'url' => home_url( '/' ) ),
         );
 
         if ( is_singular() ) {
@@ -498,38 +448,31 @@ class DPW_PSI_SEO {
                 'post'          => 'Blog',
             );
             if ( isset( $labels[ $post_type ] ) ) {
-                $items[] = array(
-                    'name' => $labels[ $post_type ],
-                    'url'  => get_post_type_archive_link( $post_type ),
-                );
+                $archive_url = get_post_type_archive_link( $post_type );
+                if ( $archive_url ) {
+                    $items[] = array( 'name' => $labels[ $post_type ], 'url' => $archive_url );
+                }
             }
-            $items[] = array(
-                'name' => get_the_title(),
-                'url'  => get_permalink(),
-            );
+            $items[] = array( 'name' => get_the_title(), 'url' => get_permalink() );
         } elseif ( is_category() || is_tax() ) {
             $term = get_queried_object();
-            $items[] = array(
-                'name' => $term->name,
-                'url'  => get_term_link( $term ),
-            );
+            if ( $term ) {
+                $items[] = array( 'name' => $term->name, 'url' => get_term_link( $term ) );
+            }
         } elseif ( is_post_type_archive() ) {
             $obj = get_queried_object();
-            $items[] = array(
-                'name' => $obj->labels->name,
-                'url'  => get_post_type_archive_link( $obj->name ),
-            );
-        } elseif ( is_404() ) {
-            $items[] = array( 'name' => 'Tidak Ditemukan' );
+            if ( $obj && isset( $obj->name ) ) {
+                $items[] = array( 'name' => $obj->labels->name, 'url' => get_post_type_archive_link( $obj->name ) );
+            }
         }
 
         $schema_items = array();
         $position = 1;
         foreach ( $items as $item ) {
             $entry = array(
-                '@type' => 'ListItem',
+                '@type'    => 'ListItem',
                 'position' => $position,
-                'name'  => $item['name'],
+                'name'     => $item['name'],
             );
             if ( ! empty( $item['url'] ) ) {
                 $entry['item'] = $item['url'];
@@ -538,12 +481,11 @@ class DPW_PSI_SEO {
             $position++;
         }
 
-        $data = array(
-            '@context' => 'https://schema.org',
-            '@type'    => 'BreadcrumbList',
+        $this->output_json_ld( array(
+            '@context'        => 'https://schema.org',
+            '@type'           => 'BreadcrumbList',
             'itemListElement' => $schema_items,
-        );
-        $this->output_json_ld( $data );
+        ) );
     }
 
     private function output_article_schema() {
@@ -552,7 +494,7 @@ class DPW_PSI_SEO {
             return;
         }
 
-        $thumb_id = get_post_thumbnail_id( $post );
+        $thumb_id  = get_post_thumbnail_id( $post );
         $image_url = '';
         if ( $thumb_id ) {
             $img = wp_get_attachment_image_src( $thumb_id, 'full' );
@@ -613,7 +555,6 @@ class DPW_PSI_SEO {
             }
         }
 
-        /* Extract YouTube embed URL for contentUrl */
         $embed_url = '';
         if ( preg_match( '/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/', $video_url, $m ) ) {
             $embed_url = 'https://www.youtube.com/embed/' . $m[1];
@@ -622,26 +563,21 @@ class DPW_PSI_SEO {
         }
 
         $data = array(
-            '@context'      => 'https://schema.org',
-            '@type'         => 'VideoObject',
-            'name'          => get_the_title( $post ),
-            'description'   => $this->get_meta_description(),
-            'uploadDate'    => get_the_date( 'c', $post ),
-            'thumbnailUrl'  => $thumb_url ? $thumb_url : '',
+            '@context'     => 'https://schema.org',
+            '@type'        => 'VideoObject',
+            'name'         => get_the_title( $post ),
+            'description'  => $this->get_meta_description(),
+            'uploadDate'   => get_the_date( 'c', $post ),
+            'thumbnailUrl' => $thumb_url,
         );
 
         if ( $embed_url ) {
             $data['contentUrl'] = $embed_url;
         }
 
-        if ( $video_url ) {
-            $data['embedUrl'] = $video_url;
-        }
-
         $this->output_json_ld( $data );
     }
 
-    /* ── Helpers ── */
     private function get_site_logo_url() {
         $custom_logo_id = get_theme_mod( 'custom_logo' );
         if ( $custom_logo_id ) {
@@ -650,39 +586,18 @@ class DPW_PSI_SEO {
                 return $img[0];
             }
         }
-        return home_url( '/wp-content/themes/dpw-psi-papeng/assets/images/logo.png' );
+        return '';
     }
 
     private function get_social_urls() {
         $urls = array();
-        $social_keys = array( 'facebook', 'instagram', 'twitter', 'youtube', 'tiktok' );
-        foreach ( $social_keys as $key ) {
-            $url = dpw_psi_get( $key, '#' );
+        $keys = array( 'facebook', 'instagram', 'twitter', 'youtube', 'tiktok' );
+        foreach ( $keys as $key ) {
+            $url = dpw_psi_get( $key, '' );
             if ( $url && '#' !== $url ) {
                 $urls[] = $url;
             }
         }
         return $urls;
-    }
-
-    /* ── Customizer: GSC Verification ── */
-    public function customizer_fields( $wp_customize ) {
-
-        $wp_customize->add_section( 'dpw_gsc_section', array(
-            'title' => __( 'Google Search Console', 'dpw-psi-papeng' ),
-            'panel' => 'dpw_psi_panel',
-        ) );
-
-        $wp_customize->add_setting( 'gsc_verification', array(
-            'default'           => '',
-            'sanitize_callback' => 'sanitize_text_field',
-        ) );
-
-        $wp_customize->add_control( 'gsc_verification', array(
-            'label'       => __( 'Google Site Verification Code', 'dpw-psi-papeng' ),
-            'description' => __( 'Masukkan kode verifikasi dari Google Search Console (hanya isi yang ada di dalam content="...")', 'dpw-psi-papeng' ),
-            'section'     => 'dpw_gsc_section',
-            'type'        => 'text',
-        ) );
     }
 }
